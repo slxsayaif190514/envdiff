@@ -73,6 +73,18 @@ def test_export_csv_mismatch_row(full_result: CompareResult) -> None:
     assert mismatch_rows == [["mismatch", "SHARED", "old", "new"]]
 
 
+def test_export_csv_missing_in_b_row(full_result: CompareResult) -> None:
+    rows = list(csv.reader(io.StringIO(export_csv(full_result))))
+    missing_b_rows = [r for r in rows if r[0] == "missing_in_b"]
+    assert missing_b_rows == [["missing_in_b", "ONLY_A", "hello", ""]]
+
+
+def test_export_csv_missing_in_a_row(full_result: CompareResult) -> None:
+    rows = list(csv.reader(io.StringIO(export_csv(full_result))))
+    missing_a_rows = [r for r in rows if r[0] == "missing_in_a"]
+    assert missing_a_rows == [["missing_in_a", "ONLY_B", "", "world"]]
+
+
 # --- dispatch ---
 
 def test_export_result_json(full_result: CompareResult) -> None:
