@@ -1,73 +1,66 @@
 """CLI entry point for envdiff."""
 
 import sys
-from pathlib import Path
-
-import click
+import argparse
 
 from envdiff.parser import parse_env_file, EnvParseError
-from envdiff.comparator import compare_envs
+from envdiff.comparator import compare
 from envdiff.formatter import format_result
+from envdiff.reporter import build_summary, format_summary
 
 
-@click.command()
-@click.argument("file_a", type=click.Path(exists=True, dir_okay=False))
-@click.argument("file_b", type=click.Path(exists=True, dir_okay=False))
-@click.option(
-    "--keys-only",
-    is_flag=True,
-    default=False,
-    help="Only check for missing keys, skip value comparison.",
-)
-@click.option(
-    "--no-color",
-    is_flag=True,
-    default=False,
-    help="Disable colored output.",
-)
-@click.option(
-    "--exit-code",
-    is_flag=True,
-    default=False,
-    help="Exit with code 1 if differences are found (useful in CI).",
-)
-def main(
-    file_a: str,
-    file_b: str,
-    keys_only: bool,
-    no_color: bool,
-    exit_code: bool,
-) -> None:
-    """Compare two .env files and report differences."""
-    path_a = Path(file_a)
-    path_b = Path(file_b)
-
-    try:
-        env_a = parse_env_file(path_a)
-    except EnvParseError as exc:
-        click.echo(f"Error parsing {file_a}: {exc}", err=True)
-        sys.exit(2)
-
-    try:
-        env_b = parse_env_file(path_b)
-    except EnvParseError as exc:
-        click.echo(f"Error parsing {file_b}: {exc}", err=True)
-        sys.exit(2)
-
-    result = compare_envs(
-        env_a,
-        env_b,
-        env_a_name=path_a.name,
-        env_b_name=path_b.name,
-        keys_only=keys_only,
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="envdiff",
+        description="Compare .env files and highlight missing or mismatched keys.",
     )
+    p.add_argument("file_a", help="First .env file (baseline)")
+    p.add_argument("file_b", help="Second .env file (target)")
+    p.add_argument(
+        "--summary",
+        action="store_true",
+        default=False,
+        help="Print a summary report after the diff",
+    )
+    p.add_argument(
+        "--no-color",
+        action="store_true",
+        default=False,
+        help="Disable colored output",
+    )
+    return p
 
-    output = format_result(result, no_color=no_color)
-    click.echo(output)
 
-    if exit_code and result.has_differences:
-        sys.exit(1)
+def main(argv=None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    try:
+        env_a = parse_env_file(args.file_a)
+    except (EnvParseError, OSError) as exc:
+        print(f"envdiff: error reading {args.file_a}: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        env_b = parse_env_file(args.file_b)
+    except (EnvParseError, OSError) as exc:
+        print(f"envdiff: error reading {args.file_b}: {exc}", file=sys.stderr)
+        return 1
+
+    result = compare(env_a, env_b)
+
+    color = not args.no_color
+    output = format_result(result, color=color)
+    if output:
+        print(output)
+
+    if args.summary:
+        summary = build_summary(result, args.file_a, args.file_b)
+        print()
+        print(format_summary(summary))
+
+    return 1 if result.has_differences else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

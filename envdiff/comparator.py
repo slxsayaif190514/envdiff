@@ -1,4 +1,4 @@
-"""Core comparison logic for envdiff."""
+"""Compare two parsed env dicts and produce structured diffs."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -7,78 +7,56 @@ from typing import Dict, List, Optional
 @dataclass
 class KeyDiff:
     key: str
-    status: str  # 'missing_in', 'extra_in', 'mismatch'
-    env_a_value: Optional[str] = None
-    env_b_value: Optional[str] = None
+    value_a: Optional[str]
+    value_b: Optional[str]
 
-    def __repr__(self) -> str:
-        if self.status == "mismatch":
-            return (
-                f"KeyDiff({self.key!r}, mismatch: "
-                f"{self.env_a_value!r} vs {self.env_b_value!r})"
-            )
-        return f"KeyDiff({self.key!r}, {self.status})"
+    def __repr__(self) -> str:  # noqa: D105
+        return f"KeyDiff(key={self.key!r}, a={self.value_a!r}, b={self.value_b!r})"
 
 
 @dataclass
 class CompareResult:
-    env_a_name: str
-    env_b_name: str
     diffs: List[KeyDiff] = field(default_factory=list)
+    matched_count: int = 0
 
     @property
     def missing_in_b(self) -> List[KeyDiff]:
-        return [d for d in self.diffs if d.status == "missing_in_b"]
+        return [d for d in self.diffs if d.value_b is None]
 
     @property
     def missing_in_a(self) -> List[KeyDiff]:
-        return [d for d in self.diffs if d.status == "missing_in_a"]
+        return [d for d in self.diffs if d.value_a is None]
 
     @property
     def mismatches(self) -> List[KeyDiff]:
-        return [d for d in self.diffs if d.status == "mismatch"]
+        return [d for d in self.diffs if d.value_a is not None and d.value_b is not None]
 
     @property
     def has_differences(self) -> bool:
-        return len(self.diffs) > 0
+        return bool(self.diffs)
 
 
-def compare_envs(
+def compare(
     env_a: Dict[str, str],
     env_b: Dict[str, str],
-    env_a_name: str = "env_a",
-    env_b_name: str = "env_b",
-    keys_only: bool = False,
 ) -> CompareResult:
-    """Compare two parsed env dicts and return a CompareResult.
-
-    Args:
-        env_a: dict from the first env file
-        env_b: dict from the second env file
-        env_a_name: label for the first env
-        env_b_name: label for the second env
-        keys_only: if True, skip value comparison (only check key presence)
-    """
-    result = CompareResult(env_a_name=env_a_name, env_b_name=env_b_name)
+    """Compare two env dicts and return a CompareResult."""
+    diffs: List[KeyDiff] = []
+    matched = 0
 
     all_keys = set(env_a) | set(env_b)
 
     for key in sorted(all_keys):
-        in_a = key in env_a
-        in_b = key in env_b
+        val_a = env_a.get(key)
+        val_b = env_b.get(key)
 
-        if in_a and not in_b:
-            result.diffs.append(KeyDiff(key=key, status="missing_in_b", env_a_value=env_a[key]))
-        elif in_b and not in_a:
-            result.diffs.append(KeyDiff(key=key, status="missing_in_a", env_b_value=env_b[key]))
-        elif not keys_only and env_a[key] != env_b[key]:
-            result.diffs.append(
-                KeyDiff(
-                    key=key,
-                    status="mismatch",
-                    env_a_value=env_a[key],
-                    env_b_value=env_b[key],
-                )
-            )
+        if val_a is None:
+            diffs.append(KeyDiff(key=key, value_a=None, value_b=val_b))
+        elif val_b is None:
+            diffs.append(KeyDiff(key=key, value_a=val_a, value_b=None))
+        elif val_a != val_b:
+            diffs.append(KeyDiff(key=key, value_a=val_a, value_b=val_b))
+        else:
+            matched += 1
 
-    return result
+    return CompareResult(diffs=diffs, matched_count=matched)
