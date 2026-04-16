@@ -53,3 +53,21 @@ def filter_by_type(
         missing_in_a=result.missing_in_a if include_missing_a else [],
         mismatches=result.mismatches if include_mismatches else [],
     )
+
+
+def filter_by_keys(result: CompareResult, keys: List[str]) -> CompareResult:
+    """Return a new CompareResult keeping only the specified *keys*.
+
+    Comparison is case-insensitive, matching the behaviour of the other
+    filter helpers in this module.
+    """
+    keys_upper = {k.upper() for k in keys}
+
+    def _keep(key: str) -> bool:
+        return key.upper() in keys_upper
+
+    return CompareResult(
+        missing_in_b=[d for d in result.missing_in_b if _keep(d.key)],
+        missing_in_a=[d for d in result.missing_in_a if _keep(d.key)],
+        mismatches=[d for d in result.mismatches if _keep(d.key)],
+    )
