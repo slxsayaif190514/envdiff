@@ -25,6 +25,15 @@ def _dim(s: str) -> str:
 
 
 def format_pin_result(result: PinResult, *, color: bool = True) -> str:
+    """Format a PinResult for terminal output.
+
+    Args:
+        result: The PinResult to format.
+        color: Whether to include ANSI color codes in the output.
+
+    Returns:
+        A formatted string suitable for printing to a terminal.
+    """
     def c(fn, s):
         return fn(s) if color else s
 
