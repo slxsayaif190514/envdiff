@@ -48,3 +48,12 @@ def test_env_names_in_header():
     # no-diff path just shows a success line, but both names are there
     assert ".env.dev" in output
     assert ".env.prod" in output
+
+
+def test_mismatch_value_not_shown_when_masked():
+    """Values should be hidden when mask_values=True, but the key should still appear."""
+    result = _result({"SECRET": "hunter2"}, {"SECRET": "correct-horse"})
+    output = format_result(result, no_color=True, mask_values=True)
+    assert "SECRET" in output
+    assert "hunter2" not in output
+    assert "correct-horse" not in output
