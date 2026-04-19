@@ -86,3 +86,14 @@ def test_snapshot_no_diffs(tmp_path):
     assert snap.diffs == []
     loaded = load_snapshot(out)
     assert loaded.diffs == []
+
+
+def test_load_roundtrip_diff_values(tmp_path, simple_result):
+    """Check that key/value_a/value_b fields survive a save+load cycle."""
+    out = str(tmp_path / "snap.json")
+    save_snapshot(simple_result, label="values", path=out)
+    loaded = load_snapshot(out)
+    mismatch = next(d for d in loaded.diffs if d.type == "mismatch")
+    assert mismatch.key == "LOG_LEVEL"
+    assert mismatch.value_a == "debug"
+    assert mismatch.value_b == "error"
