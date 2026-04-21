@@ -25,6 +25,13 @@ def _dim(s: str) -> str:
 
 
 def format_snapshot(snap: Snapshot, *, color: bool = True) -> str:
+    """Return a human-readable string representation of a Snapshot.
+
+    Args:
+        snap: The Snapshot to format.
+        color: When True, ANSI escape codes are used for terminal coloring.
+               Pass False to get plain text suitable for logging or file output.
+    """
     _b = _bold if color else str
     _c = _cyan if color else str
     _r = _red if color else str
@@ -52,7 +59,33 @@ def format_snapshot(snap: Snapshot, *, color: bool = True) -> str:
         else:
             lines.append(
                 _y(f"  ~ [{tag}] {diff.key}")
-                + _d(f"  A={diff.value_a!r} → B={diff.value_b!r}")
+                + _d(f"  A={diff.value_a!r} \u2192 B={diff.value_b!r}")
             )
 
     return "\n".join(lines)
+
+
+def format_snapshot_summary(snap: Snapshot, *, color: bool = True) -> str:
+    """Return a compact one-line summary of a Snapshot's diff counts.
+
+    Useful for listing multiple snapshots side-by-side without the full detail.
+    """
+    _b = _bold if color else str
+    _r = _red if color else str
+    _c = _cyan if color else str
+    _y = _yellow if color else str
+
+    missing_b = sum(1 for d in snap.diffs if d.diff_type == "missing_in_b")
+    missing_a = sum(1 for d in snap.diffs if d.diff_type == "missing_in_a")
+    changed = len(snap.diffs) - missing_b - missing_a
+
+    parts = []
+    if missing_b:
+        parts.append(_r(f"-{missing_b}"))
+    if missing_a:
+        parts.append(_c(f"+{missing_a}"))
+    if changed:
+        parts.append(_y(f"~{changed}"))
+
+    diff_str = "  ".join(parts) if parts else "no diffs"
+    return _b(snap.label) + f"  [{diff_str}]"
