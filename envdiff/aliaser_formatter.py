@@ -24,6 +24,15 @@ def _dim(s: str) -> str:
 
 
 def format_alias_result(result: AliasResult, *, color: bool = True) -> str:
+    """Format an AliasResult into a human-readable string.
+
+    Args:
+        result: The AliasResult to format.
+        color: Whether to include ANSI color codes in the output.
+
+    Returns:
+        A formatted string summarising the alias resolution results.
+    """
     bold = _bold if color else str
     green = _green if color else str
     red = _red if color else str
@@ -56,3 +65,8 @@ def format_alias_result(result: AliasResult, *, color: bool = True) -> str:
         lines.append(green(summary))
 
     return "\n".join(lines)
+
+
+def format_alias_result_plain(result: AliasResult) -> str:
+    """Convenience wrapper that returns plain text with no ANSI color codes."""
+    return format_alias_result(result, color=False)
