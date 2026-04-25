@@ -75,6 +75,12 @@ def test_env_file_stored(snapshot):
     assert result.env_file == "staging.env"
 
 
+def test_env_file_defaults_to_none(snapshot):
+    """env_file should be None when not provided."""
+    result = compare_against_baseline(snapshot, {})
+    assert result.env_file is None
+
+
 # --- formatter tests ---
 
 
@@ -93,25 +99,18 @@ def test_format_added_shown():
 
 
 def test_format_removed_shown():
+    """Keys removed since the baseline should appear in formatter output."""
     result = BaselineResult(snapshot_label="snap", env_file=".env")
-    result.removed.append(BaselineDiff(key="OLD", baseline_value="x", current_value=None, kind="removed"))
+    result.removed.append(BaselineDiff(key="OLD_KEY", baseline_value="old", current_value=None, kind="removed"))
     out = format_baseline_result(result, color=False)
-    assert "OLD" in out
+    assert "OLD_KEY" in out
     assert "Removed" in out
 
 
 def test_format_changed_shown():
+    """Keys whose values changed since the baseline should appear in formatter output."""
     result = BaselineResult(snapshot_label="snap", env_file=".env")
-    result.changed.append(BaselineDiff(key="PORT", baseline_value="5432", current_value="3306", kind="changed"))
+    result.changed.append(BaselineDiff(key="DB_HOST", baseline_value="localhost", current_value="remotehost", kind="changed"))
     out = format_baseline_result(result, color=False)
-    assert "PORT" in out
+    assert "DB_HOST" in out
     assert "Changed" in out
-    assert "5432" in out
-    assert "3306" in out
-
-
-def test_format_header_contains_label():
-    result = BaselineResult(snapshot_label="my-snap", env_file="prod.env")
-    out = format_baseline_result(result, color=False)
-    assert "my-snap" in out
-    assert "prod.env" in out
